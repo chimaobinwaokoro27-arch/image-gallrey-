@@ -15,7 +15,8 @@ Cloudinary with an **unsigned upload preset**, and view it in a session gallery.
 
 ## Tech
 
-React + Vite (JavaScript). No UI framework, just plain CSS.
+React + Vite (JavaScript) with **Tailwind CSS v4** for styling. No UI framework —
+every style is a Tailwind utility class in the JSX.
 
 ## Setup
 
@@ -51,8 +52,8 @@ React + Vite (JavaScript). No UI framework, just plain CSS.
 index.html          The single page that loads the React app
 src/main.jsx        Entry point: mounts <App /> into #root
 src/App.jsx         The whole app (upload + gallery)
-src/index.css       Global styles and CSS variables
-src/App.css         Styles for the app layout
+src/index.css       Tailwind entry: theme tokens + a few custom keyframes
+src/components/     Navbar, Hero and the inline SVG icons
 .env                Your Cloudinary settings (not committed)
 ```
 

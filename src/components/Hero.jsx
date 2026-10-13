@@ -10,6 +10,12 @@ const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
 ]
 
+// Shared button styles (Tailwind utilities), reused by both hero buttons.
+const BTN =
+  'inline-flex items-center justify-center gap-2 rounded-full border px-6 py-3.5 text-[0.95rem] font-bold transition duration-150'
+const BTN_PRIMARY = `${BTN} border-transparent bg-accent text-accent-ink hover:-translate-y-px hover:bg-accent-hover`
+const BTN_GHOST = `${BTN} border-line bg-white/[0.06] text-ink backdrop-blur-sm hover:bg-white/[0.12]`
+
 function Hero() {
   // Which background photo is currently showing
   const [active, setActive] = useState(0)
@@ -26,42 +32,45 @@ function Hero() {
   }, [])
 
   return (
-    <header className="hero" id="home">
+    <header
+      id="home"
+      className="relative flex min-h-[92vh] items-end overflow-hidden bg-[#060a08] pt-[180px] pb-24 max-md:min-h-[88vh] max-md:pt-40 max-md:pb-16"
+    >
       {/* One layer per photo; only the active one is visible. CSS crossfades
           between them, so the change is a smooth fade instead of a hard cut. */}
-      <div className="hero__bg">
+      <div className="absolute inset-0 z-[1]">
         {HERO_IMAGES.map((src, index) => (
           <div
             key={src}
-            className={
-              index === active ? 'hero__layer hero__layer--active' : 'hero__layer'
-            }
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[1400ms] ${
+              index === active ? 'animate-hero-zoom opacity-100' : 'scale-105 opacity-0'
+            }`}
             style={{ backgroundImage: `url("${src}")` }}
           />
         ))}
       </div>
 
-      <div className="hero__overlay" />
+      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(6,10,8,0.5)_0%,rgba(6,10,8,0.72)_55%,#0a0f0d_100%)]" />
 
-      <div className="hero__content container">
-        <p className="hero__tagline">
+      <div className="relative z-[3] mx-auto w-full max-w-[1180px] px-6">
+        <p className="mb-[18px] text-[0.78rem] font-semibold tracking-[0.22em] text-mint uppercase">
           Your photos · Your wild · Your journal
         </p>
 
-        <h1 className="hero__title">
-          The wild, kept <span className="hero__accent">close.</span>
+        <h1 className="max-w-[14ch] text-[clamp(2.75rem,9vw,6rem)] leading-[0.98] font-extrabold tracking-[-0.03em]">
+          The wild, kept <span className="text-mint">close.</span>
         </h1>
 
-        <p className="hero__subtitle">
+        <p className="mt-[22px] max-w-[46ch] text-[clamp(1rem,1.6vw,1.15rem)] text-muted">
           Upload the landscapes and moments you love. VISTA turns them into a
           living gallery — a quiet record of everywhere you have been.
         </p>
 
-        <div className="hero__actions">
-          <a className="btn btn--primary" href="#upload">
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a className={BTN_PRIMARY} href="#upload">
             Start your journal
           </a>
-          <a className="btn btn--ghost" href="#gallery">
+          <a className={BTN_GHOST} href="#gallery">
             View the collection
           </a>
         </div>

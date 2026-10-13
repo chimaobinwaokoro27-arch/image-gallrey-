@@ -8,11 +8,35 @@ import {
   HeartIcon,
   ImageIcon,
 } from './components/Icons'
-import './App.css'
 
 // These two values come from the .env file.
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+
+// Shared Tailwind utility strings, so the markup below stays readable.
+const SECTION = 'mx-auto w-full max-w-[1180px] px-6 py-[88px] max-[760px]:py-16'
+const SECTION_HEAD = 'mb-8 max-w-[620px]'
+const SECTION_TITLE = 'text-[clamp(1.7rem,3.5vw,2.4rem)] font-extrabold'
+const SECTION_SUB = 'mt-2.5 text-muted'
+
+const BTN =
+  'inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-6 py-3.5 text-[0.95rem] font-bold transition duration-150'
+const BTN_PRIMARY = `${BTN} bg-accent text-accent-ink hover:-translate-y-px hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50`
+
+const FILTER =
+  'inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-[9px] text-[0.88rem] font-semibold transition duration-150'
+const FILTER_OFF = `${FILTER} border-line bg-white/[0.04] text-muted hover:bg-white/[0.08] hover:text-ink`
+const FILTER_ON = `${FILTER} border-transparent bg-accent text-accent-ink`
+
+const CARD_FAV =
+  'absolute top-2.5 left-2.5 z-[2] inline-flex h-[30px] w-[30px] items-center justify-center rounded-full border bg-black/55 backdrop-blur-sm transition-colors duration-150 hover:bg-black/[0.78]'
+const LIGHTBOX_FAV =
+  'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border bg-white/[0.08] transition-colors duration-150 hover:bg-white/[0.16]'
+const FAV_ON = 'border-heart/[0.45] text-heart shadow-[0_0_16px_rgba(255,59,92,0.45)]'
+const FAV_OFF = 'border-white/[0.18] text-white'
+
+const LIGHTBOX_BTN =
+  'absolute inline-flex items-center justify-center rounded-full border border-white/[0.16] bg-white/[0.08] text-white backdrop-blur-[8px] transition-colors duration-150 hover:bg-white/[0.18]'
 
 // Build a small thumbnail URL from the original Cloudinary URL by inserting
 // a transformation right after "/image/upload/":
@@ -218,12 +242,12 @@ function App() {
       <Hero />
 
       {/* ---------------- Gallery ---------------- */}
-      <section id="gallery" className="section container">
-        <div className="section__head">
-          <h2 className="section__title">
+      <section id="gallery" className={SECTION}>
+        <div className={SECTION_HEAD}>
+          <h2 className={SECTION_TITLE}>
             {showFavorites ? 'Your favorites' : 'The collection'}
           </h2>
-          <p className="section__subtitle">
+          <p className={SECTION_SUB}>
             {showFavorites
               ? 'The photos you liked, kept together in one quiet corner.'
               : 'Every photo you have uploaded this session, arranged in one place.'}
@@ -232,29 +256,41 @@ function App() {
 
         {/* The All / Favorites switch only appears once there is something to show */}
         {images.length > 0 && (
-          <div className="filters">
+          <div className="mb-[22px] flex flex-wrap gap-2">
             <button
               type="button"
-              className={showFavorites ? 'filter' : 'filter filter--active'}
+              className={showFavorites ? FILTER_OFF : FILTER_ON}
               onClick={() => setShowFavorites(false)}
             >
               All
-              <span className="filter__count">{images.length}</span>
+              <span
+                className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[0.72rem] font-bold ${
+                  showFavorites ? 'bg-white/10' : 'bg-black/[0.16]'
+                }`}
+              >
+                {images.length}
+              </span>
             </button>
             <button
               type="button"
-              className={showFavorites ? 'filter filter--active' : 'filter'}
+              className={showFavorites ? FILTER_ON : FILTER_OFF}
               onClick={() => setShowFavorites(true)}
             >
               Favorites
-              <span className="filter__count">{favorites.length}</span>
+              <span
+                className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[0.72rem] font-bold ${
+                  showFavorites ? 'bg-black/[0.16]' : 'bg-white/10'
+                }`}
+              >
+                {favorites.length}
+              </span>
             </button>
           </div>
         )}
 
         {visibleImages.length === 0 ? (
-          <div className="empty">
-            <ImageIcon />
+          <div className="flex flex-col items-center gap-3.5 rounded-lg border border-dashed border-line bg-white/[0.04] px-6 py-16 text-center text-muted">
+            <ImageIcon className="h-11 w-11 text-mint" />
             <p>
               {showFavorites
                 ? 'No favorites yet. Tap the heart on a photo to keep it here.'
@@ -262,18 +298,19 @@ function App() {
             </p>
           </div>
         ) : (
-          <div className="gallery">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[18px]">
             {visibleImages.map((image, index) => {
               const isFavorite = favorites.includes(image.public_id)
 
               return (
-                <figure key={image.public_id} className="card">
+                <figure
+                  key={image.public_id}
+                  className="group relative m-0 overflow-hidden rounded-md border border-line bg-panel transition duration-200 hover:-translate-y-1 hover:border-white/20"
+                >
                   {/* Like / unlike this photo */}
                   <button
                     type="button"
-                    className={
-                      isFavorite ? 'card__fav card__fav--on' : 'card__fav'
-                    }
+                    className={`${CARD_FAV} ${isFavorite ? FAV_ON : FAV_OFF}`}
                     onClick={() => handleToggleFavorite(image.public_id)}
                     title={
                       isFavorite ? 'Remove from favorites' : 'Add to favorites'
@@ -283,28 +320,33 @@ function App() {
                     }
                     aria-pressed={isFavorite}
                   >
-                    <HeartIcon filled={isFavorite} />
+                    <HeartIcon
+                      filled={isFavorite}
+                      className={`h-[15px] w-[15px] ${
+                        isFavorite ? 'animate-heart-pop motion-reduce:animate-none' : ''
+                      }`}
+                    />
                   </button>
 
                   <button
                     type="button"
-                    className="card__remove"
+                    className="absolute top-2.5 right-2.5 z-[2] inline-flex h-[30px] w-[30px] items-center justify-center rounded-full border border-white/[0.18] bg-black/55 text-white backdrop-blur-sm transition-colors duration-150 hover:bg-danger"
                     onClick={() => handleRemove(image.public_id)}
                     title="Remove from gallery"
                     aria-label="Remove from gallery"
                   >
-                    <CloseIcon />
+                    <CloseIcon className="h-3.5 w-3.5" />
                   </button>
 
                   <button
                     type="button"
-                    className="card__link"
+                    className="block w-full cursor-pointer border-0 bg-transparent p-0"
                     onClick={() => setLightboxIndex(index)}
                     title="View this photo"
                     aria-label="View this photo full-screen"
                   >
                     <img
-                      className="card__img"
+                      className="h-[220px] w-full object-cover transition-transform duration-[400ms] group-hover:scale-105"
                       src={getThumbnailUrl(image.secure_url)}
                       alt="Uploaded frame"
                       loading="lazy"
@@ -318,30 +360,33 @@ function App() {
       </section>
 
       {/* ---------------- Upload ---------------- */}
-      <section id="upload" className="section container">
-        <div className="section__head">
-          <h2 className="section__title">Add to the collection</h2>
-          <p className="section__subtitle">
+      <section id="upload" className={SECTION}>
+        <div className={SECTION_HEAD}>
+          <h2 className={SECTION_TITLE}>Add to the collection</h2>
+          <p className={SECTION_SUB}>
             Choose an image and send it to Cloudinary. It joins your gallery as
             soon as it uploads.
           </p>
         </div>
 
-        <div className="upload">
+        <div className="flex max-w-[640px] flex-col items-start gap-4 rounded-lg border border-line bg-white/[0.04] p-7">
           {/* The label is the clickable drop area. The real <input> is hidden
               but still opened when the label is clicked. */}
-          <label className="upload__drop" htmlFor="file-input">
-            <ImageIcon />
-            <span className="upload__drop-title">
+          <label
+            className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-md border-2 border-dashed border-line bg-white/[0.02] px-6 py-10 text-center text-muted transition duration-150 hover:border-orange hover:bg-orange/[0.06]"
+            htmlFor="file-input"
+          >
+            <ImageIcon className="h-[34px] w-[34px] text-mint" />
+            <span className="font-semibold text-ink">
               {file
                 ? 'Choose a different image'
                 : 'Choose an image from your device'}
             </span>
-            <span className="upload__drop-hint">JPG, PNG or WEBP</span>
+            <span className="text-[0.82rem]">JPG, PNG or WEBP</span>
             <input
               id="file-input"
               ref={fileInputRef}
-              className="upload__input"
+              className="hidden"
               type="file"
               accept="image/*"
               onChange={handleFileChange}
@@ -350,34 +395,34 @@ function App() {
           </label>
 
           {file && (
-            <div className="preview">
+            <div className="flex w-full animate-fade-in items-center gap-3.5 rounded-md border border-line bg-white/[0.03] p-3">
               <img
-                className="preview__img"
+                className="h-[84px] w-[84px] rounded-sm border border-line bg-panel object-cover"
                 src={previewUrl}
                 alt="Preview of the selected image"
               />
-              <div className="preview__meta">
-                <p className="preview__name">{file.name}</p>
-                <p className="preview__size">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold break-all text-ink">{file.name}</p>
+                <p className="mt-0.5 text-[0.82rem] text-muted">
                   {formatSize(file.size)} · preview — not uploaded yet
                 </p>
               </div>
               <button
                 type="button"
-                className="preview__clear"
+                className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full border border-white/[0.16] bg-black/50 text-white transition-colors duration-150 hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={handleClearSelection}
                 disabled={isUploading}
                 title="Remove this image"
                 aria-label="Remove this image"
               >
-                <CloseIcon />
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
 
           <button
             type="button"
-            className="btn btn--primary upload__btn"
+            className={`${BTN_PRIMARY} w-full`}
             onClick={handleUpload}
             disabled={!file || isUploading}
           >
@@ -385,11 +430,16 @@ function App() {
           </button>
 
           {isUploading && (
-            <p className="upload__status">Uploading your image, please wait…</p>
+            <p className="text-[0.9rem] text-orange">
+              Uploading your image, please wait…
+            </p>
           )}
 
           {error && (
-            <p className="upload__error" role="alert">
+            <p
+              className="w-full rounded-sm border border-red-500/35 bg-red-500/[0.12] px-4 py-3 text-[0.9rem] text-[#ffd9d9]"
+              role="alert"
+            >
               {error}
             </p>
           )}
@@ -399,7 +449,7 @@ function App() {
       {/* ---------------- Full-screen viewer ---------------- */}
       {lightboxImage && (
         <div
-          className="lightbox"
+          className="fixed inset-0 z-[200] flex animate-fade-in items-center justify-center bg-[rgba(4,8,6,0.9)] p-6 backdrop-blur-[10px] max-[760px]:p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Photo viewer"
@@ -407,45 +457,41 @@ function App() {
         >
           <button
             type="button"
-            className="lightbox__close"
+            className={`${LIGHTBOX_BTN} top-5 right-5 z-[3] h-11 w-11 max-[760px]:top-3 max-[760px]:right-3`}
             onClick={() => setLightboxIndex(null)}
             aria-label="Close viewer"
           >
-            <CloseIcon />
+            <CloseIcon className="h-5 w-5" />
           </button>
 
           {visibleImages.length > 1 && (
             <button
               type="button"
-              className="lightbox__nav lightbox__nav--prev"
+              className={`${LIGHTBOX_BTN} top-1/2 left-5 z-[2] h-[46px] w-[46px] -translate-y-1/2 max-[760px]:left-2 max-[760px]:h-10 max-[760px]:w-10`}
               onClick={(event) => {
                 event.stopPropagation()
                 showPrevImage()
               }}
               aria-label="Previous photo"
             >
-              <ChevronLeftIcon />
+              <ChevronLeftIcon className="h-[22px] w-[22px]" />
             </button>
           )}
 
           <figure
-            className="lightbox__figure"
+            className="m-0 flex max-w-[min(1100px,92vw)] flex-col gap-3"
             onClick={(event) => event.stopPropagation()}
           >
             <img
-              className="lightbox__img"
+              className="max-h-[76vh] max-w-full animate-fade-in rounded-md object-contain shadow-glow max-[760px]:max-h-[70vh]"
               src={getLargeUrl(lightboxImage.secure_url)}
               alt="Enlarged view of the photo"
             />
 
-            <figcaption className="lightbox__caption">
+            <figcaption className="flex items-center gap-[14px] text-[0.85rem] text-muted">
               <button
                 type="button"
-                className={
-                  lightboxIsFavorite
-                    ? 'lightbox__fav lightbox__fav--on'
-                    : 'lightbox__fav'
-                }
+                className={`${LIGHTBOX_FAV} ${lightboxIsFavorite ? FAV_ON : 'border-white/[0.16] text-white'}`}
                 onClick={() => handleToggleFavorite(lightboxImage.public_id)}
                 aria-pressed={lightboxIsFavorite}
                 aria-label={
@@ -454,15 +500,22 @@ function App() {
                     : 'Add to favorites'
                 }
               >
-                <HeartIcon filled={lightboxIsFavorite} />
+                <HeartIcon
+                  filled={lightboxIsFavorite}
+                  className={`h-[17px] w-[17px] ${
+                    lightboxIsFavorite
+                      ? 'animate-heart-pop motion-reduce:animate-none'
+                      : ''
+                  }`}
+                />
               </button>
 
-              <span className="lightbox__count">
+              <span className="font-semibold text-ink">
                 {lightboxIndex + 1} / {visibleImages.length}
               </span>
 
               <a
-                className="lightbox__original"
+                className="ml-auto font-semibold text-mint hover:underline"
                 href={lightboxImage.secure_url}
                 target="_blank"
                 rel="noreferrer"
@@ -475,23 +528,23 @@ function App() {
           {visibleImages.length > 1 && (
             <button
               type="button"
-              className="lightbox__nav lightbox__nav--next"
+              className={`${LIGHTBOX_BTN} top-1/2 right-5 z-[2] h-[46px] w-[46px] -translate-y-1/2 max-[760px]:right-2 max-[760px]:h-10 max-[760px]:w-10`}
               onClick={(event) => {
                 event.stopPropagation()
                 showNextImage()
               }}
               aria-label="Next photo"
             >
-              <ChevronRightIcon />
+              <ChevronRightIcon className="h-[22px] w-[22px]" />
             </button>
           )}
         </div>
       )}
 
-      <footer className="footer">
+      <footer className="border-t border-line pt-10 pb-[60px] text-center text-[0.85rem] text-muted">
         <p>
-          <strong>
-            VISTA<span className="footer__dot">.</span>
+          <strong className="text-ink">
+            VISTA<span className="text-orange">.</span>
           </strong>{' '}
           — the wild, kept close.
         </p>

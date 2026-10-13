@@ -1,11 +1,15 @@
 // Small, reusable inline SVG icons.
-// They use stroke="currentColor", so each icon takes the text color of
-// whatever it sits inside (and therefore works with our dark theme).
+// Each one accepts a `className` so its size can be set with Tailwind
+// (e.g. <PlusIcon className="h-4 w-4" />). The stroke uses currentColor, so an
+// icon always matches the text colour of whatever it sits inside.
 
-export function MarkIcon() {
+// Adds a sensible default (never squashed inside a flex row).
+const sized = (className) => `shrink-0 ${className}`
+
+export function MarkIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -21,10 +25,10 @@ export function MarkIcon() {
   )
 }
 
-export function PlusIcon() {
+export function PlusIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -39,10 +43,10 @@ export function PlusIcon() {
   )
 }
 
-export function ImageIcon() {
+export function ImageIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -58,10 +62,10 @@ export function ImageIcon() {
   )
 }
 
-export function HeartIcon({ filled = false }) {
+export function HeartIcon({ filled = false, className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
@@ -75,10 +79,10 @@ export function HeartIcon({ filled = false }) {
   )
 }
 
-export function ChevronLeftIcon() {
+export function ChevronLeftIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -92,10 +96,10 @@ export function ChevronLeftIcon() {
   )
 }
 
-export function ChevronRightIcon() {
+export function ChevronRightIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -109,10 +113,10 @@ export function ChevronRightIcon() {
   )
 }
 
-export function CloseIcon() {
+export function CloseIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
-      className="icon"
+      className={sized(className)}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
