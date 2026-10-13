@@ -13,6 +13,10 @@ import {
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
+// Where the gallery and the favorites are remembered between visits.
+const STORAGE_KEY = 'vista.gallery.v1'
+const FAVORITES_KEY = 'vista.favorites.v1'
+
 // Shared Tailwind utility strings, so the markup below stays readable.
 const SECTION = 'mx-auto w-full max-w-[1180px] px-6 py-[88px] max-[760px]:py-16'
 const SECTION_HEAD = 'mb-8 max-w-[620px]'
@@ -66,6 +70,29 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Read a list from localStorage, returning [] when it is missing or unreadable.
+// (JSON.parse(null) is null, which is not an array, so that is covered too.)
+function loadList(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key))
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+// Keep only the fields the gallery actually needs, so the saved data stays
+// small and we never store anything we do not display.
+function slimImage(data) {
+  return {
+    public_id: data.public_id,
+    secure_url: data.secure_url,
+    width: data.width,
+    height: data.height,
+    created_at: data.created_at,
+  }
+}
+
 function App() {
   // The image file the user picked (null = nothing picked yet)
   const [file, setFile] = useState(null)
@@ -76,8 +103,15 @@ function App() {
   // Lets us reset the hidden <input> so the same file can be picked again
   const fileInputRef = useRef(null)
 
-  // Every successfully uploaded image for this session
-  const [images, setImages] = useState([])
+  // Every successfully uploaded image, restored from the last visit
+  const [images, setImages] = useState(() =>
+    loadList(STORAGE_KEY).filter(
+      (image) =>
+        image &&
+        typeof image.public_id === 'string' &&
+        typeof image.secure_url === 'string'
+    )
+  )
 
   // True while an upload is in progress
   const [isUploading, setIsUploading] = useState(false)
@@ -85,8 +119,10 @@ function App() {
   // A message shown when something goes wrong ("" = no error)
   const [error, setError] = useState('')
 
-  // public_id values of the images the user liked (session only)
-  const [favorites, setFavorites] = useState([])
+  // public_id values of the images the user liked, restored from the last visit
+  const [favorites, setFavorites] = useState(() =>
+    loadList(FAVORITES_KEY).filter((id) => typeof id === 'string')
+  )
 
   // When true, the gallery shows only the liked images
   const [showFavorites, setShowFavorites] = useState(false)
@@ -94,7 +130,7 @@ function App() {
   // Index of the photo open in the full-screen viewer (null = closed)
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
-  // Remove one image from the session gallery (not from Cloudinary).
+  // Remove one image from the gallery (not from Cloudinary).
   // It also stops being a favorite, so the counts stay correct.
   function handleRemove(publicId) {
     setImages((prev) => prev.filter((image) => image.public_id !== publicId))
@@ -132,6 +168,25 @@ function App() {
     return () => URL.revokeObjectURL(previewUrl)
   }, [previewUrl])
 
+  // Save the gallery to localStorage whenever it changes, so uploaded images
+  // are still here when the visitor comes back later.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(images))
+    } catch {
+      // Storage can be unavailable (private mode) or full — ignore and move on.
+    }
+  }, [images])
+
+  // Save the favorites too, so the hearts are still filled on the next visit.
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
+    } catch {
+      // Ignore storage errors — persistence is best-effort.
+    }
+  }, [favorites])
+
   // Runs when the "Upload image" button is clicked
   async function handleUpload() {
     if (!file) return
@@ -166,8 +221,8 @@ function App() {
         throw new Error(data.error?.message || 'Upload failed. Please try again.')
       }
 
-      // 4. Add the new image to the top of the gallery
-      setImages((prev) => [data, ...prev])
+      // 4. Add the new image to the top of the gallery (and remember it)
+      setImages((prev) => [slimImage(data), ...prev])
 
       // 5. Clear the picked file, its preview, and the hidden input
       setFile(null)
@@ -250,7 +305,7 @@ function App() {
           <p className={SECTION_SUB}>
             {showFavorites
               ? 'The photos you liked, kept together in one quiet corner.'
-              : 'Every photo you have uploaded this session, arranged in one place.'}
+              : 'Every photo you have uploaded, arranged in one place.'}
           </p>
         </div>
 

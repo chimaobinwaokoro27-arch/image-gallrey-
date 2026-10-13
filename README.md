@@ -1,7 +1,8 @@
 # Cloudinary Image Gallery
 
 A small React practice project. Pick an image from your computer, upload it to
-Cloudinary with an **unsigned upload preset**, and view it in a session gallery.
+Cloudinary with an **unsigned upload preset**, and view it in a gallery that is
+kept between visits.
 
 ## Features
 
@@ -9,7 +10,7 @@ Cloudinary with an **unsigned upload preset**, and view it in a session gallery.
 - Upload it to Cloudinary's Upload API using `FormData`
 - Loading state ("Uploading...") while the request is in progress
 - Shows the uploaded image using the URL Cloudinary returns (`secure_url`)
-- Keeps every uploaded image in a gallery for the current session
+- Keeps every uploaded image in a gallery that survives a refresh (saved in the browser with `localStorage`)
 - Shows **resized thumbnails** using Cloudinary URL transformations
 - Clear error message if an upload fails
 
