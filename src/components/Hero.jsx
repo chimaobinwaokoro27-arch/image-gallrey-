@@ -1,13 +1,30 @@
 import { useEffect, useState } from 'react'
 
-// A rotating set of free-to-use landscape photos (Unsplash License).
+// A rotating set of free-to-use photos (Unsplash License). It is a deliberately
+// mixed set — city, architecture, people, food, abstract, tech and travel, with
+// just one landscape — so the backdrop never feels like it is all nature.
 // They are used only as a decorative background — never as gallery items.
 const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
+  // city buildings
+  'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1920&q=75',
+  // Brooklyn Bridge at night
+  'https://images.unsplash.com/photo-1496588152823-86ff7695e68f?auto=format&fit=crop&w=1920&q=75',
+  // modern architecture
+  'https://images.unsplash.com/photo-1527576539890-dfa815648363?auto=format&fit=crop&w=1920&q=75',
+  // portrait
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1920&q=75',
+  // portrait
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1920&q=75',
+  // food
+  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1920&q=75',
+  // abstract texture
+  'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?auto=format&fit=crop&w=1920&q=75',
+  // workspace / technology
+  'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1920&q=75',
+  // travel / street
+  'https://images.unsplash.com/photo-1549654911-76c991fab90a?auto=format&fit=crop&w=1920&q=75',
+  // landscape
+  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=75',
 ]
 
 // Shared button styles (Tailwind utilities), reused by both hero buttons.

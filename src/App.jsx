@@ -361,7 +361,7 @@ function App() {
 
       {/* ---------------- Upload ---------------- */}
       <section id="upload" className={SECTION}>
-        <div className={SECTION_HEAD}>
+        <div className={`${SECTION_HEAD} mx-auto text-center`}>
           <h2 className={SECTION_TITLE}>Add to the collection</h2>
           <p className={SECTION_SUB}>
             Choose an image and send it to Cloudinary. It joins your gallery as
@@ -369,7 +369,7 @@ function App() {
           </p>
         </div>
 
-        <div className="flex max-w-[640px] flex-col items-start gap-4 rounded-lg border border-line bg-white/[0.04] p-7">
+        <div className="mx-auto flex max-w-[640px] flex-col items-center gap-4 rounded-lg border border-line bg-white/[0.04] p-7">
           {/* The label is the clickable drop area. The real <input> is hidden
               but still opened when the label is clicked. */}
           <label
@@ -430,14 +430,14 @@ function App() {
           </button>
 
           {isUploading && (
-            <p className="text-[0.9rem] text-orange">
+            <p className="text-center text-[0.9rem] text-orange">
               Uploading your image, please wait…
             </p>
           )}
 
           {error && (
             <p
-              className="w-full rounded-sm border border-red-500/35 bg-red-500/[0.12] px-4 py-3 text-[0.9rem] text-[#ffd9d9]"
+              className="w-full rounded-sm border border-red-500/35 bg-red-500/[0.12] px-4 py-3 text-center text-[0.9rem] text-[#ffd9d9]"
               role="alert"
             >
               {error}
