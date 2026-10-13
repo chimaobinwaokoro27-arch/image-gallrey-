@@ -13,9 +13,11 @@ import {
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
-// Where the gallery and the favorites are remembered between visits.
+// Where the gallery, the favorites and the hidden list are remembered between
+// visits (on this device).
 const STORAGE_KEY = 'vista.gallery.v1'
 const FAVORITES_KEY = 'vista.favorites.v1'
+const HIDDEN_KEY = 'vista.hidden.v1'
 
 // Shared Tailwind utility strings, so the markup below stays readable.
 const SECTION = 'mx-auto w-full max-w-[1180px] px-6 py-[88px] max-[760px]:py-16'
@@ -93,6 +95,42 @@ function slimImage(data) {
   }
 }
 
+// Ask our own serverless function for the whole collection. That function
+// talks to the Cloudinary Admin API, so this is what lets photos uploaded on
+// one device show up on another. Returns { images } on success, { error } when
+// the server reported a problem, or {} when there is simply nothing to call
+// (for example during `vite dev`).
+async function fetchServerImages() {
+  try {
+    const response = await fetch('/api/photos')
+    const type = response.headers.get('content-type') || ''
+    if (!type.includes('application/json')) return {}
+    const data = await response.json()
+    if (!response.ok) {
+      return { error: data.error || 'Could not load your cloud gallery.' }
+    }
+    return { images: Array.isArray(data.images) ? data.images : [] }
+  } catch {
+    return {}
+  }
+}
+
+// Combine lists of images, dropping duplicates (same public_id) and putting the
+// newest first. Later lists win when the same photo appears twice.
+function mergeImages(...lists) {
+  const byId = new Map()
+  for (const list of lists) {
+    for (const image of list) {
+      if (image && typeof image.public_id === 'string' && image.secure_url) {
+        byId.set(image.public_id, image)
+      }
+    }
+  }
+  return [...byId.values()].sort(
+    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  )
+}
+
 function App() {
   // The image file the user picked (null = nothing picked yet)
   const [file, setFile] = useState(null)
@@ -124,16 +162,25 @@ function App() {
     loadList(FAVORITES_KEY).filter((id) => typeof id === 'string')
   )
 
+  // public_id values the user removed on this device. The photo stays safe in
+  // Cloudinary, it just stops being shown here.
+  const [hidden, setHidden] = useState(() =>
+    loadList(HIDDEN_KEY).filter((id) => typeof id === 'string')
+  )
+
+  // A short message shown if the shared (server) gallery cannot be reached.
+  const [syncNote, setSyncNote] = useState('')
+
   // When true, the gallery shows only the liked images
   const [showFavorites, setShowFavorites] = useState(false)
 
   // Index of the photo open in the full-screen viewer (null = closed)
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
-  // Remove one image from the gallery (not from Cloudinary).
+  // Hide an image from this device (it is not deleted from Cloudinary).
   // It also stops being a favorite, so the counts stay correct.
   function handleRemove(publicId) {
-    setImages((prev) => prev.filter((image) => image.public_id !== publicId))
+    setHidden((prev) => (prev.includes(publicId) ? prev : [...prev, publicId]))
     setFavorites((prev) => prev.filter((id) => id !== publicId))
   }
 
@@ -187,6 +234,49 @@ function App() {
     }
   }, [favorites])
 
+  // Save the hidden list so removed photos stay removed on this device.
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
+    } catch {
+      // Ignore storage errors.
+    }
+  }, [hidden])
+
+  // Pull the shared collection from the server, so photos uploaded on another
+  // device show up here too. Runs on load, and again whenever the tab becomes
+  // visible (for example when you switch back after uploading on your phone).
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncFromServer() {
+      const result = await fetchServerImages()
+      if (cancelled) return
+
+      if (result.error) {
+        setSyncNote(result.error)
+        return
+      }
+
+      setSyncNote('')
+      if (result.images) {
+        setImages((prev) => mergeImages(result.images, prev))
+      }
+    }
+
+    syncFromServer()
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') syncFromServer()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
   // Runs when the "Upload image" button is clicked
   async function handleUpload() {
     if (!file) return
@@ -235,10 +325,18 @@ function App() {
     }
   }
 
+  // Everything the user has not removed on this device
+  const shownImages = images.filter(
+    (image) => !hidden.includes(image.public_id)
+  )
+
+  // The favorite images that are still in view (drives the heart count)
+  const favoriteImages = shownImages.filter((image) =>
+    favorites.includes(image.public_id)
+  )
+
   // The list actually shown in the gallery (all images, or only favorites)
-  const visibleImages = showFavorites
-    ? images.filter((image) => favorites.includes(image.public_id))
-    : images
+  const visibleImages = showFavorites ? favoriteImages : shownImages
 
   // ----- Full-screen viewer (lightbox) -----
 
@@ -290,7 +388,7 @@ function App() {
   return (
     <>
       <Navbar
-        favoritesCount={favorites.length}
+        favoritesCount={favoriteImages.length}
         onShowFavorites={setShowFavorites}
       />
 
@@ -307,10 +405,13 @@ function App() {
               ? 'The photos you liked, kept together in one quiet corner.'
               : 'Every photo you have uploaded, arranged in one place.'}
           </p>
+          {syncNote && (
+            <p className="mt-2 text-[0.82rem] text-orange">{syncNote}</p>
+          )}
         </div>
 
         {/* The All / Favorites switch only appears once there is something to show */}
-        {images.length > 0 && (
+        {shownImages.length > 0 && (
           <div className="mb-[22px] flex flex-wrap gap-2">
             <button
               type="button"
@@ -323,7 +424,7 @@ function App() {
                   showFavorites ? 'bg-white/10' : 'bg-black/[0.16]'
                 }`}
               >
-                {images.length}
+                {shownImages.length}
               </span>
             </button>
             <button
@@ -337,7 +438,7 @@ function App() {
                   showFavorites ? 'bg-black/[0.16]' : 'bg-white/10'
                 }`}
               >
-                {favorites.length}
+                {favoriteImages.length}
               </span>
             </button>
           </div>
