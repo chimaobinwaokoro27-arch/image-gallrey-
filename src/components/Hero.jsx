@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
 // A rotating set of free-to-use photos (Unsplash License). It is a deliberately
-// mixed set — city, architecture, people, food, abstract, tech and travel, with
-// just one landscape — so the backdrop never feels like it is all nature.
+// mixed set — city, architecture, people, food, abstract, tech, travel and a car,
+// with just one landscape — so the backdrop never feels like it is all nature.
+// Every photo is landscape-shaped, so it crops well on wide screens.
 // They are used only as a decorative background — never as gallery items.
 const HERO_IMAGES = [
   // city buildings
@@ -11,16 +12,20 @@ const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1496588152823-86ff7695e68f?auto=format&fit=crop&w=1920&q=75',
   // modern architecture
   'https://images.unsplash.com/photo-1527576539890-dfa815648363?auto=format&fit=crop&w=1920&q=75',
-  // portrait
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1920&q=75',
-  // portrait
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1920&q=75',
+  // man, outdoors
+  'https://images.unsplash.com/photo-1695485121912-25c7ea05119c?auto=format&fit=crop&w=1920&q=75',
+  // woman, outdoors
+  'https://images.unsplash.com/photo-1615464670798-6e92fafa2a89?auto=format&fit=crop&w=1920&q=75',
+  // a group of friends
+  'https://images.unsplash.com/photo-1511988617509-a57c8a288659?auto=format&fit=crop&w=1920&q=75',
   // food
   'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1920&q=75',
-  // abstract texture
-  'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?auto=format&fit=crop&w=1920&q=75',
+  // colourful abstract
+  'https://images.unsplash.com/photo-1579546929662-711aa81148cf?auto=format&fit=crop&w=1920&q=75',
   // workspace / technology
   'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1920&q=75',
+  // BMW M3 coupe
+  'https://images.unsplash.com/photo-1603386329225-868f9b1ee6c9?auto=format&fit=crop&w=1920&q=75',
   // travel / street
   'https://images.unsplash.com/photo-1549654911-76c991fab90a?auto=format&fit=crop&w=1920&q=75',
   // landscape
