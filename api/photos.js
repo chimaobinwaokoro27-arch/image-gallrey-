@@ -63,9 +63,10 @@ export default async function handler(req, res) {
       .map(toPublicImage)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
-    // A little caching keeps the gallery snappy without hiding brand-new uploads
-    // for long.
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30')
+    // Always hand back a fresh list so a deleted photo is gone on the very next
+    // refresh. The image files themselves are still cached by Cloudinary's CDN —
+    // that is a separate concern from this gallery list.
+    res.setHeader('Cache-Control', 'no-store')
     res.status(200).json({ images })
   } catch (err) {
     res.status(500).json({

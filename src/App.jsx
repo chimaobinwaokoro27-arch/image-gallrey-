@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import {
@@ -28,6 +28,8 @@ const SECTION_SUB = 'mt-2.5 text-muted'
 const BTN =
   'inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-6 py-3.5 text-[0.95rem] font-bold transition duration-150'
 const BTN_PRIMARY = `${BTN} bg-accent text-accent-ink hover:-translate-y-px hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50`
+const BTN_GHOST =
+  'inline-flex items-center gap-2 rounded-full border border-line bg-white/[0.04] px-4 py-2 text-[0.85rem] font-semibold text-muted transition duration-150 hover:bg-white/[0.08] hover:text-ink disabled:cursor-not-allowed disabled:opacity-55'
 
 const FILTER =
   'inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-[9px] text-[0.88rem] font-semibold transition duration-150'
@@ -95,23 +97,59 @@ function slimImage(data) {
   }
 }
 
+// Turn whatever the upload threw into a message that names the real reason.
+// A bare "Failed to fetch" means the browser never got a reply from
+// api.cloudinary.com, which is a network / browser-block problem rather than
+// anything wrong with the photo, so we say so instead of echoing the cryptic
+// browser text.
+function describeUploadError(err) {
+  if (err && err.name === 'AbortError') {
+    return 'The upload timed out before Cloudinary replied. Your connection looks slow or unstable for this file — try again (ideally on Wi-Fi) or pick a smaller image.'
+  }
+
+  if (err instanceof TypeError) {
+    return 'Could not reach Cloudinary (api.cloudinary.com): the request was blocked or never left your browser. Common causes are an ad-blocker / privacy extension, strict tracking protection, a VPN or firewall, or being offline. Allow this site in the blocker (or try another network) and click Upload image again.'
+  }
+
+  return err?.message || 'Something went wrong during the upload.'
+}
+
 // Ask our own serverless function for the whole collection. That function
 // talks to the Cloudinary Admin API, so this is what lets photos uploaded on
 // one device show up on another. Returns { images } on success, { error } when
 // the server reported a problem, or {} when there is simply nothing to call
 // (for example during `vite dev`).
 async function fetchServerImages() {
+  let response
   try {
-    const response = await fetch('/api/photos')
-    const type = response.headers.get('content-type') || ''
-    if (!type.includes('application/json')) return {}
+    response = await fetch('/api/photos', {
+      headers: { Accept: 'application/json' },
+      // Ask the browser not to reuse a cached copy, so "Refresh" is a real
+      // refresh and deleted photos are noticed quickly.
+      cache: 'no-store',
+    })
+  } catch {
+    return {
+      error:
+        'Could not reach the gallery service. Check your connection and try Refresh.',
+    }
+  }
+
+  const type = response.headers.get('content-type') || ''
+  if (!type.includes('application/json')) {
+    // No serverless function to call (for example during `vite dev`). Keep the
+    // local gallery and stay quiet instead of showing a scary error.
+    return {}
+  }
+
+  try {
     const data = await response.json()
     if (!response.ok) {
       return { error: data.error || 'Could not load your cloud gallery.' }
     }
     return { images: Array.isArray(data.images) ? data.images : [] }
   } catch {
-    return {}
+    return { error: 'The gallery service returned an unexpected response.' }
   }
 }
 
@@ -140,6 +178,10 @@ function App() {
 
   // Lets us reset the hidden <input> so the same file can be picked again
   const fileInputRef = useRef(null)
+
+  // Images uploaded during this visit that the server list may not have caught
+  // up with yet, so a brand-new upload never blinks out of the gallery.
+  const pendingUploadsRef = useRef(new Map())
 
   // Every successfully uploaded image, restored from the last visit
   const [images, setImages] = useState(() =>
@@ -170,6 +212,12 @@ function App() {
 
   // A short message shown if the shared (server) gallery cannot be reached.
   const [syncNote, setSyncNote] = useState('')
+
+  // True while we are re-reading the shared gallery from the server.
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  // Bumped when the visitor asks for a fresh list; the sync effect watches it.
+  const [syncToken, setSyncToken] = useState(0)
 
   // When true, the gallery shows only the liked images
   const [showFavorites, setShowFavorites] = useState(false)
@@ -243,25 +291,42 @@ function App() {
     }
   }, [hidden])
 
-  // Pull the shared collection from the server, so photos uploaded on another
-  // device show up here too. Runs on load, and again whenever the tab becomes
-  // visible (for example when you switch back after uploading on your phone).
+  // Read the shared gallery from the server. On success, Cloudinary's list is
+  // the source of truth, so anything deleted there disappears here too. On
+  // failure we keep the last known gallery and show a message instead. Runs on
+  // load, when the tab becomes visible again, and after a manual refresh.
   useEffect(() => {
     let cancelled = false
 
     async function syncFromServer() {
       const result = await fetchServerImages()
       if (cancelled) return
+      setIsSyncing(false)
 
       if (result.error) {
+        // Never throw away the cache just because the request failed.
         setSyncNote(result.error)
         return
       }
 
+      // Nothing to call (for example under `vite dev`) — leave it as is.
+      if (!result.images) return
+
       setSyncNote('')
-      if (result.images) {
-        setImages((prev) => mergeImages(result.images, prev))
+
+      const serverImages = mergeImages(result.images)
+      const serverIds = new Set(serverImages.map((image) => image.public_id))
+
+      // Photos the server now lists no longer count as "pending".
+      for (const id of [...pendingUploadsRef.current.keys()]) {
+        if (serverIds.has(id)) pendingUploadsRef.current.delete(id)
       }
+
+      // The server's list wins, so stale cached photos are dropped. We only add
+      // back photos uploaded moments ago that the API has not listed yet.
+      setImages(
+        mergeImages(serverImages, [...pendingUploadsRef.current.values()])
+      )
     }
 
     syncFromServer()
@@ -275,6 +340,12 @@ function App() {
       cancelled = true
       document.removeEventListener('visibilitychange', handleVisibility)
     }
+  }, [syncToken])
+
+  // The visitor asked for a fresh list: show the busy state, then re-sync.
+  const handleRefresh = useCallback(() => {
+    setIsSyncing(true)
+    setSyncToken((n) => n + 1)
   }, [])
 
   // Runs when the "Upload image" button is clicked
@@ -298,28 +369,60 @@ function App() {
       formData.append('file', file)
       formData.append('upload_preset', UPLOAD_PRESET)
 
-      // 2. Send it to the unsigned upload endpoint
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: formData }
-      )
+      // 2. Send it to the unsigned upload endpoint. Drop the request after 60s
+      // so a stalled connection reports a clear reason instead of hanging.
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
 
-      const data = await response.json()
-
-      // 3. If Cloudinary reported an error, throw it
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed. Please try again.')
+      let response
+      try {
+        response = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+          { method: 'POST', body: formData, signal: controller.signal }
+        )
+      } finally {
+        clearTimeout(timeoutId)
       }
 
-      // 4. Add the new image to the top of the gallery (and remember it)
-      setImages((prev) => [slimImage(data), ...prev])
+      // Cloudinary replies with JSON, but a proxy or blocker can return
+      // something else. Read it defensively so we can still report a reason.
+      let data = null
+      try {
+        data = await response.json()
+      } catch {
+        data = null
+      }
+
+      // 3. If Cloudinary reported an error, throw the real message + status
+      if (!response.ok) {
+        const detail = data?.error?.message
+        throw new Error(
+          detail
+            ? `Cloudinary rejected the upload (${response.status}): ${detail}`
+            : `Cloudinary rejected the upload (HTTP ${response.status}).`
+        )
+      }
+
+      if (!data) {
+        throw new Error(
+          'Cloudinary accepted the upload but returned an unexpected (non-JSON) reply.'
+        )
+      }
+
+      // 4. Add the new image to the top of the gallery (and remember it).
+      const uploaded = slimImage(data)
+
+      // Hold it as "pending" until the server list confirms it, so the next
+      // sync does not briefly remove a photo that was just uploaded.
+      pendingUploadsRef.current.set(uploaded.public_id, uploaded)
+      setImages((prev) => mergeImages([uploaded], prev))
 
       // 5. Clear the picked file, its preview, and the hidden input
       setFile(null)
       setPreviewUrl('')
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
-      setError(err.message || 'Something went wrong during the upload.')
+      setError(describeUploadError(err))
     } finally {
       setIsUploading(false)
     }
@@ -405,9 +508,20 @@ function App() {
               ? 'The photos you liked, kept together in one quiet corner.'
               : 'Every photo you have uploaded, arranged in one place.'}
           </p>
-          {syncNote && (
-            <p className="mt-2 text-[0.82rem] text-orange">{syncNote}</p>
-          )}
+          <div className="mt-3.5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className={BTN_GHOST}
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              title="Reload the latest gallery from Cloudinary"
+            >
+              {isSyncing ? 'Refreshing…' : 'Refresh gallery'}
+            </button>
+            {syncNote && (
+              <span className="text-[0.82rem] text-orange">{syncNote}</span>
+            )}
+          </div>
         </div>
 
         {/* The All / Favorites switch only appears once there is something to show */}
